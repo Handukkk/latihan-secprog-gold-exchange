@@ -13,31 +13,39 @@ require_once '../../config/database.php';
 // }
 session_start();
 function login($email, $password) {
-    if(empty($email) || empty($password)) {
-        header("Location:" . SITE_ROOT . "app/Views/auth/login.php?error=5");
+    if(
+        empty($email) ||
+        empty($password)
+    ) {
+        header("Location:" . SITE_ROOT . "/app/Views/auth/login.php?error=67");
+        exit;
     }
 
     $db = get_instance();
-    if(!$db) {
-        header("Location:" . SITE_ROOT . "app/Views/auth/login.php?error=5");
+    if (!$db) {
+         header("Location:" . SITE_ROOT . "app/Views/auth/login.php?error=67");
+         exit;
     }
 
-    $stmt = $db->prepare("SELECT * FROM users WHERE email=? LIMIT 1");
+    $stmt = $db->prepare("
+    SELECT *
+    FROM users
+    WHERE email = ?
+    LIMIT 1
+    ");
     $stmt->bind_param("s", $email);
-    
+
     $stmt->execute();
     $res = $stmt->get_result();
     $user = $res->fetch_assoc();
 
-    if($user && password_verify($password, $user["password_hash"])) {
-        $_SESSION['user_id'] = $user["id"];
-        $_SESSION['username'] = $user["username"];
-
-        header("Location: /");
-        exit;
+    if ($user && password_verify($password, $user["password_hash"])) {
+        $_SESSION["user_id"] = $user["id"];
+        header("Location:" . SITE_ROOT);
     } else {
         header("Location:" . SITE_ROOT . "app/Views/auth/login.php?error=1");
     }
+    exit;
 }
 
 
@@ -55,15 +63,20 @@ function register($username, $email, $password, $confirmPassword) {
         empty($password) ||
         empty($confirmPassword)
     ) {
-        header("Location:" . SITE_ROOT . "app/Views/auth/register.php?error=5");
+        header("Location:" . SITE_ROOT . "app/Views/auth/register.php?error=67");
     }
 
     $db = get_instance();
     if (!$db) {
-        header("Location:" . SITE_ROOT . "app/Views/auth/register.php?error=5");
+        header("Location:" . SITE_ROOT . "app/Views/auth/register.php?error=67");
     }
 
-    $stmt = $db->prepare("SELECT email FROM users WHERE email = ? LIMIT 1");
+    $stmt = $db->prepare("
+        SELECT email
+        FROM users
+        WHERE email = ?
+        LIMIT 1
+    ");
     $stmt->bind_param("s", $email);
 
     $stmt->execute();
@@ -72,39 +85,40 @@ function register($username, $email, $password, $confirmPassword) {
 
     if ($isEmail) {
         header("Location:" . SITE_ROOT . "app/Views/auth/register.php?error=2");
+        exit;
+    }
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        header("Location:" . SITE_ROOT . "app/Views/auth/register.php?error=67");
+        exit;
     }
 
     if ($password !== $confirmPassword) {
         header("Location:" . SITE_ROOT . "app/Views/auth/register.php?error=3");
+        exit;
     }
 
     if (mb_strlen($password) < 8) {
         header("Location:" . SITE_ROOT . "app/Views/auth/register.php?error=4");
+        exit;
     }
 
-    $password_hash = password_hash($password, PASSWORD_DEFAULT);
+    $hash = password_hash($password, PASSWORD_BCRYPT);
 
-    $stmt = $db->prepare("INSERT INTO users (username, email, password_hash, gold_balance) VALUES (?, ?, ?, 0.00)");
-    $stmt->bind_param("sss", $username, $email, $password_hash);
+    $stmt = $db->prepare("
+        INSERT INTO users (username, email, password_hash)
+        VALUES (?, ?, ?)
+    ");
+    $stmt->bind_param("sss", $username, $email, $hash);
 
-    $stmt->execute();
-
-    $stmt = $db->prepare("SELECT * FROM users WHERE email = ?");
-    $stmt->bind_param("s", $email);
-
-    $stmt->execute();
-    $res = $stmt->get_result();
-    $user = $res->fetch_assoc();
-
-    if ($user) {
-        $_SESSION['user_id'] = $user["id"];
-        $_SESSION['username'] = $user["username"];
-
-        header("Location: /");
+    if ($stmt->execute()) {
+        login($email, $password);
+        exit;
+    } else {
+        header("Location:" . SITE_ROOT . "app/Views/auth/register.php?error=67");
         exit;
     }
 }
-
 
 // Case Session Management
 // function logout(){
@@ -112,8 +126,10 @@ function register($username, $email, $password, $confirmPassword) {
 //     // and redirect to login page
 // }
 function logout() {
+    session_unset();
     session_destroy();
-    header("Location: /");
+    header("Location:" . SITE_ROOT);
+    exit;
 }
 
 // main handler

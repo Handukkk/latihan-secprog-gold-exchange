@@ -10,6 +10,19 @@ require_once '../../config/database.php';
 // make sure save the notes to with format 'Top up via {method}'
 // }
 function topup_transaction($user_id, $type, $amount_gold, $notes) {
+    if (
+        empty($user_id) ||
+        empty($type) ||
+        empty($amount_gold) ||
+        empty($notes)
+    ) {
+        return false;
+    }
+
+    if ((float)$amount_gold < 0) {
+        return false;
+    }
+
     $db = get_instance();
     if (!$db) {
         return false;
@@ -17,9 +30,10 @@ function topup_transaction($user_id, $type, $amount_gold, $notes) {
 
     $db->begin_transaction();
     try {
+        // insert ke transaction
         $stmt = $db->prepare("
-        INSERT INTO transactions (user_id, type, amount_gold, methode) 
-        VALUES (?, ?, ?, ?)
+            INSERT INTO transactions (user_id, type, amount_gold, methode)
+            VALUES (?, ?, ?, ?)
         ");
         $stmt->bind_param("isds", $user_id, $type, $amount_gold, $notes);
 
@@ -27,6 +41,7 @@ function topup_transaction($user_id, $type, $amount_gold, $notes) {
             throw new Exception("Transaction failed");
         }
 
+        // update balance
         $stmt = $db->prepare("
             UPDATE users
             SET gold_balance = gold_balance + ?
@@ -35,7 +50,7 @@ function topup_transaction($user_id, $type, $amount_gold, $notes) {
         $stmt->bind_param("di", $amount_gold, $user_id);
 
         if (!$stmt->execute()) {
-            throw new Exception("Update balance failed");
+            throw new Exception("Balance update failed");
         }
 
         $db->commit();
@@ -54,6 +69,17 @@ function topup_transaction($user_id, $type, $amount_gold, $notes) {
    // make sure cant minus if balance not enough
 // }
 function withdraw_transaction($user_id, $amount_gold) {
+    if (
+        empty($user_id) ||
+        empty($amount_gold)
+    ) {
+        return false;
+    }
+
+    if ((float)$amount_gold < 0) {
+        return false;
+    }
+
     $db = get_instance();
     if (!$db) {
         return false;
@@ -62,23 +88,25 @@ function withdraw_transaction($user_id, $amount_gold) {
     $db->begin_transaction();
     try {
         $stmt = $db->prepare("
-        SELECT * 
-        FROM users
-        WHERE id = ?
+            SELECT gold_balance
+            FROM users
+            WHERE id = ?
+            LIMIT 1
         ");
         $stmt->bind_param("i", $user_id);
-        
+
         $stmt->execute();
         $res = $stmt->get_result();
         $balance = $res->fetch_assoc();
-
+        
         if ((float)$balance["gold_balance"] < $amount_gold) {
             throw new Exception("Insufficient balance");
         }
 
+        // insert ke transaction
         $stmt = $db->prepare("
-        INSERT INTO transactions (user_id, type, amount_gold, methode) 
-        VALUES (?, 'WITHDRAW', ?, 'WITHDRAWED')
+            INSERT INTO transactions (user_id, type, amount_gold, methode)
+            VALUES (?, 'WITHDRAW', ?, 'WITHDRAWED')
         ");
         $stmt->bind_param("id", $user_id, $amount_gold);
 
@@ -86,6 +114,7 @@ function withdraw_transaction($user_id, $amount_gold) {
             throw new Exception("Transaction failed");
         }
 
+        // update balance
         $stmt = $db->prepare("
             UPDATE users
             SET gold_balance = gold_balance - ?
@@ -94,7 +123,7 @@ function withdraw_transaction($user_id, $amount_gold) {
         $stmt->bind_param("di", $amount_gold, $user_id);
 
         if (!$stmt->execute()) {
-            throw new Exception("Update balance failed");
+            throw new Exception("Balance update failed");
         }
 
         $db->commit();

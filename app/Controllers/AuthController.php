@@ -21,17 +21,22 @@ function login($email, $password) {
         exit;
     }
 
+    $email = trim((string)$email);
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        header("Location:" . SITE_ROOT . "/app/Views/auth/login.php?error=67");
+    }
+
     $db = get_instance();
-    if (!$db) {
+    if (!is_connect_to_db()) {
          header("Location:" . SITE_ROOT . "app/Views/auth/login.php?error=67");
          exit;
     }
 
     $stmt = $db->prepare("
-    SELECT *
-    FROM users
-    WHERE email = ?
-    LIMIT 1
+        SELECT *
+        FROM users
+        WHERE email = ?
+        LIMIT 1
     ");
     $stmt->bind_param("s", $email);
 
@@ -40,6 +45,7 @@ function login($email, $password) {
     $user = $res->fetch_assoc();
 
     if ($user && password_verify($password, $user["password_hash"])) {
+        session_regenerate_id(true);
         $_SESSION["user_id"] = $user["id"];
         header("Location:" . SITE_ROOT);
     } else {
@@ -66,8 +72,17 @@ function register($username, $email, $password, $confirmPassword) {
         header("Location:" . SITE_ROOT . "app/Views/auth/register.php?error=67");
     }
 
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        header("Location:" . SITE_ROOT . "app/Views/auth/register.php?error=67");
+    }
+
+    $username = trim((string)$username);
+    $username = filter_var($username, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+    $passowrd = (string)$password;
+    $confirmPassword = (string)$confirmPassword;
+
     $db = get_instance();
-    if (!$db) {
+    if (!is_connect_to_db()) {
         header("Location:" . SITE_ROOT . "app/Views/auth/register.php?error=67");
     }
 

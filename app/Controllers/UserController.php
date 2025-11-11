@@ -14,7 +14,7 @@ function get_user($user_id) {
     }
 
     $db = get_instance();
-    if(!$db) {
+    if(!is_connect_to_db()) {
         return null;
     }
 
@@ -47,7 +47,7 @@ function get_transaction($user_id) {
     }
 
     $db = get_instance();
-    if(!$db) {
+    if(!is_connect_to_db()) {
         return null;
     }
 

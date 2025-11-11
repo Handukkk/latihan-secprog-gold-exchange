@@ -19,12 +19,23 @@ function topup_transaction($user_id, $type, $amount_gold, $notes) {
         return false;
     }
 
+    if (!filter_var($user_id, FILTER_VALIDATE_INT)) {
+        return false;
+    }
+
+    if (!filter_var($amount_gold, FILTER_VALIDATE_FLOAT)) {
+        return false;
+    }
+
+    $type = filter_var($type, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+    $notes = filter_var($notes, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+
     if ((float)$amount_gold < 0) {
         return false;
     }
 
     $db = get_instance();
-    if (!$db) {
+    if (!is_connect_to_db()) {
         return false;
     }
 
@@ -76,12 +87,20 @@ function withdraw_transaction($user_id, $amount_gold) {
         return false;
     }
 
+    if (!filter_var($user_id, FILTER_VALIDATE_INT)) {
+        return false;
+    }
+
+    if (!filter_var($amount_gold, FILTER_VALIDATE_FLOAT)) {
+        return false;
+    }
+
     if ((float)$amount_gold < 0) {
         return false;
     }
 
     $db = get_instance();
-    if (!$db) {
+    if (!is_connect_to_db()) {
         return false;
     }
 

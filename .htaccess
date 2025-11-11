@@ -1,0 +1,33 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+   
+</IfModule>
+
+# Disable directory listing
+Options -Indexes
+
+# Charset
+AddDefaultCharset UTF-8
+
+# Protect dotfiles and sensitive files
+<IfModule mod_authz_core.c>
+    <FilesMatch "^\.">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    <FilesMatch "^\.">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
+<FilesMatch "\.(env|ini|log|sh|sql|bak|psd)$">
+    Require all denied
+</FilesMatch>
+
+# Block access to VCS dirs
+ErrorDocument 404 /err.php
+RedirectMatch 404 /\.git
+RedirectMatch 404 /\.svn
+
